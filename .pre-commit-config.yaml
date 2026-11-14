@@ -61,7 +61,7 @@ repos:
   rev: v0.11.0.1
   hooks:
   - id: shellcheck
-    # The scripts run under bashio and have no extension, so pre-commit
+    # The app's scripts run under bashio and have no extension, so pre-commit
     # doesn't know they are shell.
-    files: ^quiddity/rootfs/etc/(cont-init|services)\.d/
+    files: ^(quiddity/rootfs/(etc/(cont-init|services)\.d|usr/local/bin)/|scripts/)
     types: [file]

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiddity</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.5 system-ui, sans-serif; margin: 0 auto; padding: 1.5rem 16px; max-width: 42rem; }
+  h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1.05rem; margin: 2rem 0 .5rem; }
+  p, li { margin: .4rem 0; }
+  code { font: .9em ui-monospace, monospace; word-break: break-all; }
+  .id { display: block; padding: .75rem; border: 1px solid; border-radius: 6px; user-select: all; }
+  .none { opacity: .7; }
+  button { font: inherit; margin-top: .5rem; padding: .35rem .9rem; }
+</style>
+</head>
+<body>
+<h1>Quiddity</h1>
+<p>This node keeps a copy of your graph online, so your devices can sync with it even when they are never on together.</p>
+
+<h2>This node's device ID</h2>
+<code class="id" id="id">@DEVICE_ID@</code>
+<button type="button" id="copy">Copy</button>
+
+<h2>Connecting a device</h2>
+<ol>
+  <li>In Quiddity on your other device, open <b>Devices</b>, and add the ID above.</li>
+  <li>Copy that device's own ID from the same page, and add it to this app's <b>Allowed devices</b> on its Configuration tab. Then restart the app.</li>
+  <li>They connect by themselves from then on. Once one device is let in, it can let in the rest, so you only need to do this once.</li>
+</ol>
+
+<h2>Allowed devices</h2>
+<ul>@ALLOWED@</ul>
+
+<script>
+document.getElementById("copy").addEventListener("click", async function () {
+  var button = this;
+  try {
+    await navigator.clipboard.writeText(document.getElementById("id").textContent);
+    button.textContent = "Copied";
+  } catch (e) {
+    // The page is in a frame that may not be allowed the clipboard.
+    var range = document.createRange();
+    range.selectNodeContents(document.getElementById("id"));
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+    button.textContent = "Selected: copy it yourself";
+  }
+});
+</script>
+</body>
+</html>

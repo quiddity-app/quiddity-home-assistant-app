@@ -1,0 +1,62 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+
+readonly GRAPH=/data/graph
+
+declare -a args=(--graph "${GRAPH}")
+case "$(bashio::config 'log_level')" in
+  error) args+=(-q) ;;
+  warn) ;;
+  info) args+=(-v) ;;
+  debug) args+=(-vv) ;;
+  trace) args+=(-vvv) ;;
+esac
+
+args+=(serve)
+# The export is written whenever the node is sent SIGUSR1, which is how
+# quiddity-backup-pre gets the copy that a backup holds.
+args+=(--export /data/export)
+# mapfile rather than a read loop: bashio doesn't end its output with a newline,
+# and read would drop the last device.
+mapfile -t devices < <(bashio::config 'allowed_devices')
+allowed=${#devices[@]}
+for device in "${devices[@]}"; do
+  args+=(--allow "${device}")
+done
+
+# The node won't serve while nobody may connect. That is how it starts out, and
+# the page that shows its ID is how that is put right, so wait for a restart
+# rather than failing, which would stop the whole app. Once a device has
+# connected it is in the graph, and is let in without being listed here.
+others=$(quiddity-node --graph "${GRAPH}" devices | grep -cv '(this device)' || true)
+if [[ "${allowed}" -eq 0 && "${others}" -eq 0 ]]; then
+  bashio::log.warning "No device is allowed to connect yet."
+  bashio::log.warning "Add one under Allowed devices in the configuration, then restart the app."
+  exec sleep infinity
+fi
+
+bashio::log.info "Starting the Quiddity node"
+# The node saves as changes arrive, but only stops cleanly on an interrupt. A
+# stop sends SIGTERM, to the node as well as to this script, so the node ignores
+# it (an ignored signal survives exec) and is interrupted from the trap below.
+(
+  trap '' TERM
+  exec quiddity-node "${args[@]}"
+) &
+pid=$!
+
+stopping=false
+trap 'stopping=true; kill -INT "${pid}" 2> /dev/null' TERM INT
+
+status=0
+wait "${pid}" || status=$?
+# A trapped signal ends the wait early, with a status that is bash's and not the
+# node's, while the node may still be saving.
+while kill -0 "${pid}" 2> /dev/null; do
+  wait "${pid}" || status=$?
+done
+# Being asked to stop is not a failure, which would stop the whole app.
+if [[ "${stopping}" == true ]]; then
+  exit 0
+fi
+exit "${status}"

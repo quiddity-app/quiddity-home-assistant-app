@@ -5,3 +5,28 @@ jactionlint = "v2.6.0"
 shellcheck = "0.11.0"
 hadolint = "2.14.0"
 pinact = "5.0.2"
+
+[tasks.build]
+description = "Build the app's image for this machine, from the pinned commit of Quiddity. The first build compiles the node, so it takes a while."
+run = "docker build --tag quiddity-app:dev quiddity"
+
+[tasks.test]
+description = "Run the image against a stand-in for the Supervisor: the page, a clean stop, backing up and restoring"
+depends = ["build"]
+run = "scripts/smoke-test.sh quiddity-app:dev"
+
+[tasks.lint]
+description = "Lint the Dockerfile and the scripts"
+run = [
+  "hadolint quiddity/Dockerfile",
+  "shellcheck scripts/*.sh quiddity/rootfs/etc/cont-init.d/* quiddity/rootfs/etc/services.d/*/* quiddity/rootfs/usr/local/bin/*",
+]
+
+[tasks.actions]
+description = "Check the actions in the workflows are pinned by hash"
+run = "pinact run --check"
+
+[tasks.check]
+description = "What CI checks, apart from publishing: the hooks, and the image run"
+depends = ["lint", "test"]
+run = "pre-commit run --all-files"

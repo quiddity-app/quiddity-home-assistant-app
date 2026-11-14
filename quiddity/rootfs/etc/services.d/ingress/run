@@ -1,0 +1,5 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+# The page that shows this node's device ID. The Supervisor's ingress gateway
+# is the only thing that can reach this port.
+exec httpd -f -vv -p 8099 -h /var/www

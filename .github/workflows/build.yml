@@ -1,0 +1,127 @@
+name: Build
+
+# Builds the app's image and runs it, on ARM, which is what it is hosted on. On
+# main it also publishes the image for each architecture it supports, as one
+# multi-arch image under the app's version, which is what Home Assistant pulls
+# (see `image` in quiddity/config.yaml). A tag is never reused: a version that is
+# already published is built but left alone, so a change to the image needs a
+# new version.
+
+on:
+  pull_request:
+    paths:
+    - quiddity/**
+    - scripts/**
+    - .github/workflows/build.yml
+  push:
+    branches: [main]
+    paths:
+    - quiddity/**
+    - scripts/**
+    - .github/workflows/build.yml
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - run: docker build --tag quiddity-app:ci quiddity
+    - run: scripts/smoke-test.sh quiddity-app:ci
+
+  prepare:
+    if: github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      architectures: ${{ steps.config.outputs.architectures }}
+      image_name: ${{ steps.config.outputs.image_name }}
+      registry_prefix: ${{ steps.config.outputs.registry_prefix }}
+      version: ${{ steps.config.outputs.version }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - id: config
+      run: |
+        image=$(yq '.image' quiddity/config.yaml)
+        {
+          echo "architectures=$(yq -o=json -I=0 '.arch' quiddity/config.yaml)"
+          echo "image_name=${image##*/}"
+          echo "registry_prefix=${image%/*}"
+          echo "version=$(yq '.version' quiddity/config.yaml)"
+        } >> "$GITHUB_OUTPUT"
+    - id: matrix
+      uses: home-assistant/builder/actions/prepare-multi-arch-matrix@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
+      with:
+        architectures: ${{ steps.config.outputs.architectures }}
+        image-name: ${{ steps.config.outputs.image_name }}
+        registry-prefix: ${{ steps.config.outputs.registry_prefix }}
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    name: build (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+      # To sign what is published, keylessly.
+      id-token: write
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: home-assistant/builder/actions/build-image@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
+      with:
+        arch: ${{ matrix.arch }}
+        image: ${{ matrix.image }}
+        context: quiddity
+        version: ${{ needs.prepare.outputs.version }}
+        image-tags: |
+          ${{ needs.prepare.outputs.version }}
+          latest
+        skip-existing: ${{ needs.prepare.outputs.version }}
+        labels: |
+          io.hass.type=app
+          io.hass.name=Quiddity
+          io.hass.description=An always-on Quiddity node for Home Assistant
+          io.hass.url=https://github.com/${{ github.repository }}
+        push: true
+        container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  manifest:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      packages: write
+      id-token: write
+    steps:
+    - uses: home-assistant/builder/actions/publish-multi-arch-manifest@7412f0023ea9b6e58e8bb5059f1660f51376f49a # 2026.09.0
+      with:
+        architectures: ${{ needs.prepare.outputs.architectures }}
+        image-name: ${{ needs.prepare.outputs.image_name }}
+        registry-prefix: ${{ needs.prepare.outputs.registry_prefix }}
+        image-tags: |
+          ${{ needs.prepare.outputs.version }}
+          latest
+        skip-existing: ${{ needs.prepare.outputs.version }}
+        container-registry-password: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,12 @@
+configuration:
+  allowed_devices:
+    name: Allowed devices
+    description: >-
+      The IDs of the devices that may connect, as shown under Devices in Quiddity's own app. Once one device is in, it can let in the others, so this is only for the first. Open Quiddity in the sidebar for this node's own ID, which you give to your other devices.
+  initial_graph:
+    name: Initial graph
+    description: >-
+      What to start with, the first time the app starts. "empty" receives the graph from a device you already have, which is almost always right. "new" makes a new graph here, which can't later be merged with another that began separately. "restore" builds the graph from the export in a restored backup, which is only for when no other device has the graph. See the Documentation tab.
+  log_level:
+    name: Log level
+    description: How much the node writes to the log.

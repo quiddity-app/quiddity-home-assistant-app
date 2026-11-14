@@ -1,0 +1,43 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+# Run by Home Assistant before a backup, inside the running app. It has the node
+# write a Markdown export of its graph, which is what the backup keeps: the
+# graph's own files can't be copied while the node writes to them.
+
+readonly EXPORT=/data/export
+# How long the node has to export, and to have started: it dies of SIGUSR1 until
+# it has set up the handler, a moment after it says it is serving.
+readonly TIMEOUT=120
+readonly SETTLE=30
+
+pid=$(pgrep -x quiddity-node || true)
+if [[ -z "${pid}" ]]; then
+  # The node waits, without serving, until a device is allowed. It has nothing
+  # to back up but its own identity, which is deliberately not backed up.
+  bashio::log.info "The node isn't serving, so there is nothing to export"
+  exit 0
+fi
+
+# The process's age, from when it started (in clock ticks, of 100 a second) and
+# how long the machine has been up.
+started=$(awk '{print $22}' "/proc/${pid}/stat")
+uptime=$(awk '{print int($1 * 100)}' /proc/uptime)
+age=$(((uptime - started) / 100))
+if ((age < SETTLE)); then
+  sleep $((SETTLE - age))
+fi
+
+# The export is built beside the directory and renamed over it, so the
+# directory's inode changes exactly when the new one is in place.
+before=$(stat -c %i "${EXPORT}" 2> /dev/null || echo none)
+kill -USR1 "${pid}"
+for ((waited = 0; waited < TIMEOUT; waited++)); do
+  now=$(stat -c %i "${EXPORT}" 2> /dev/null || echo none)
+  if [[ "${now}" != none && "${now}" != "${before}" ]]; then
+    bashio::log.info "Exported the graph for the backup"
+    exit 0
+  fi
+  sleep 1
+done
+bashio::log.error "The node didn't finish exporting within ${TIMEOUT} seconds"
+exit 1
