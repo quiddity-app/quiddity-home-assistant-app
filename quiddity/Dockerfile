@@ -1,6 +1,6 @@
 # The base is Home Assistant's own, which brings bashio and the s6 overlay that
 # supervises the services in rootfs/etc/services.d.
-ARG BUILD_FROM=ghcr.io/home-assistant/base:3.23
+ARG BUILD_FROM=ghcr.io/home-assistant/base:3.24@sha256:58422480a299b16b6ea376c2167463206d430619ed02b40cd687c8bd6875519e
 
 # Quiddity has no release yet, so the node is built from one pinned commit of
 # its repository. Renovate moves the pin; whoever merges that must also bump
