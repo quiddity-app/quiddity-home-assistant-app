@@ -1,11 +1,11 @@
 # The base is Home Assistant's own, which brings bashio and the s6 overlay that
 # supervises the services in rootfs/etc/services.d.
-ARG BUILD_FROM=ghcr.io/home-assistant/base:3.23
+ARG BUILD_FROM=ghcr.io/home-assistant/base:3.23@sha256:4c0c177f1b5072661cca81b97a1abc9f05121e9f2f649cdfcce8d15715fd80ea
 
 # Quiddity has no release yet, so the node is built from one pinned commit of
 # its repository. Renovate moves the pin; whoever merges that must also bump
 # `version` in config.yaml, because an image tag is never reused.
-FROM rust:1.100-alpine3.23 AS build
+FROM rust:1.100-alpine3.23@sha256:9577a4edf61be25721f5fa4006ad463b83ea52c0a17c6e6b673c72c794aee738 AS build
 # renovate: datasource=git-refs depName=https://github.com/quiddity-app/quiddity currentValue=main
 ARG QUIDDITY_REF=085bb09fb1c590ee97f6a1f2789ca5e7f8b7d19d
 # The packages are the builder image's own Alpine's, so they move with it.
