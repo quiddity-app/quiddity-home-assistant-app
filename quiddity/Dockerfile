@@ -7,7 +7,7 @@ ARG BUILD_FROM=ghcr.io/home-assistant/base:3.23
 # `version` in config.yaml, because an image tag is never reused.
 FROM rust:1.100-alpine3.23 AS build
 # renovate: datasource=git-refs depName=https://github.com/quiddity-app/quiddity currentValue=main
-ARG QUIDDITY_REF=085bb09fb1c590ee97f6a1f2789ca5e7f8b7d19d
+ARG QUIDDITY_REF=5541e5d4d466d9415a3bbea63e68a5d3b94c686d
 # The packages are the builder image's own Alpine's, so they move with it.
 # hadolint ignore=DL3018
 RUN apk add --no-cache build-base git
