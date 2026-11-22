@@ -1,5 +1,5 @@
 name: Quiddity
-version: "0.1.0"
+version: "0.1.0-alpha.2"
 slug: quiddity
 description: An always-on Quiddity node, so your devices can sync without being online together
 url: https://github.com/quiddity-app/quiddity-home-assistant-app

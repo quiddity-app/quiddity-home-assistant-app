@@ -6,23 +6,38 @@
   ],
   "customManagers": [
     {
-      "description": "The commit of Quiddity that the Dockerfile builds, which has no release to follow yet",
+      "description": "The Quiddity release that the Dockerfile builds, and the commit its tag points to",
       "customType": "regex",
       "managerFilePatterns": [
         "/^quiddity/Dockerfile$/"
       ],
       "matchStrings": [
-        "# renovate: datasource=git-refs depName=(?<depName>\\S+) currentValue=(?<currentValue>\\S+)\\nARG QUIDDITY_REF=(?<currentDigest>[a-f0-9]{40})"
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+) extractVersion=(?<extractVersion>\\S+)\\nARG QUIDDITY_VERSION=(?<currentValue>\\S+)\\n(?:#[^\\n]*\\n)*ARG QUIDDITY_REF=(?<currentDigest>[a-f0-9]{40})"
       ],
-      "datasourceTemplate": "git-refs"
+      "versioningTemplate": "semver"
+    },
+    {
+      "description": "The app's own version, which is the Quiddity release it is built from",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^quiddity/config\\.yaml$/"
+      ],
+      "matchStrings": [
+        "\\nversion: \"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "quiddity-app/quiddity",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^v(?<version>.+)$",
+      "versioningTemplate": "semver"
     }
   ],
   "packageRules": [
     {
-      "description": "The pinned commit is built into an image whose tag is the app's version, so a bump to it must be reviewed together with that version",
+      "description": "A Quiddity release is a new version of the app: its Dockerfile pin and the app's version move in one pull request, which isn't merged on its own because the changelog needs a line",
       "matchDepNames": [
-        "https://github.com/quiddity-app/quiddity"
+        "quiddity-app/quiddity"
       ],
+      "groupName": "Quiddity",
       "automerge": false
     }
   ]

@@ -11,9 +11,9 @@ description = "Build the app's image for this machine, from the pinned commit of
 run = "docker build --tag quiddity-app:dev quiddity"
 
 [tasks.test]
-description = "Run the image against a stand-in for the Supervisor: the page, a clean stop, backing up and restoring"
+description = "Check the version follows Quiddity's, then run the image against a stand-in for the Supervisor: the page, a clean stop, backing up and restoring"
 depends = ["build"]
-run = "scripts/smoke-test.sh quiddity-app:dev"
+run = ["scripts/check-version.sh", "scripts/smoke-test.sh quiddity-app:dev"]
 
 [tasks.lint]
 description = "Lint the Dockerfile and the scripts"

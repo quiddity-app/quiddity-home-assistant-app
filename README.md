@@ -13,8 +13,9 @@ together.
   Quiddity's panel, and the devices that may connect are a setting.
 - Runs on `amd64` and `aarch64`.
 
-Quiddity has no release yet, so the node is built from one pinned commit of its
-repository (see [the Dockerfile](quiddity/Dockerfile)).
+The node is built from a Quiddity release (see [the Dockerfile](quiddity/Dockerfile)),
+and the app's version is that release's, so a new Quiddity is a new version of
+the app.
 
 ## Installing
 

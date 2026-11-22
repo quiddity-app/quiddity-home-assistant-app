@@ -36,6 +36,9 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
+    # Before the slow part: a Renovate pull request that moved only one of the
+    # Quiddity pin and the app's version, or that has no changelog entry.
+    - run: scripts/check-version.sh
     - run: docker build --tag quiddity-app:ci quiddity
     - run: scripts/smoke-test.sh quiddity-app:ci
 

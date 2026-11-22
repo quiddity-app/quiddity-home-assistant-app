@@ -25,7 +25,8 @@ what isn't obvious from the code.
 - `quiddity/` is the app, and the only thing Home Assistant reads: `config.yaml`
   (its manifest), `Dockerfile`, `rootfs/` (copied into the image) and the pages
   the Supervisor shows (`DOCS.md`, `README.md`, `CHANGELOG.md`, `translations/`).
-- `scripts/smoke-test.sh` runs the image against a stand-in for the Supervisor.
+- `scripts/smoke-test.sh` runs the image against a stand-in for the Supervisor,
+  and `scripts/check-version.sh` that the version follows Quiddity's.
 - `.github/workflows/build.yml` runs that on ARM, and on main publishes the
   images for each architecture; `pre-commit.yml` runs the hooks.
 - `.devcontainer.json` and `.vscode/` are for running the app in a real
@@ -33,12 +34,25 @@ what isn't obvious from the code.
 
 ## Things that aren't obvious
 
-- **The node is built from one pinned commit** (`QUIDDITY_REF` in the
-  Dockerfile), because Quiddity has no release. Renovate proposes new commits.
-  **An image tag is never reused**, and the tag is `version` in `config.yaml`, so
-  *any* change to `quiddity/` that reaches the image needs a new `version`, and
-  a line in `CHANGELOG.md`. The build skips a version that is already
-  published, which would otherwise leave the old image under it silently.
+- **The app's version is the Quiddity release it is built from.** The Dockerfile
+  builds the node from the release's tag (`QUIDDITY_VERSION`, with the commit it
+  points to in `QUIDDITY_REF`, so that a tag that moves fails the build), and
+  `version` in `config.yaml` is the same string. Renovate moves all three in one
+  pull request (`renovate.json`), because an image's tag is the app's version
+  and **a tag is never reused**: a new Quiddity must be a new version, or it
+  would never reach anyone. `scripts/check-version.sh` fails CI if the two have
+  come apart, or the changelog has no entry for the version, so a Renovate pull
+  request needs a line in `CHANGELOG.md` added to it before it can merge.
+  It is built from source, not from the release's archives, because those are
+  for glibc and the image is Alpine; the build stamps the version in with the
+  release's own `scripts/set-version.sh`, as the release does, so that
+  `quiddity-node --version` says what it is.
+- **A change to the app alone, between Quiddity releases, adds a revision**:
+  `0.1.0-alpha.2.1`. Anything in `quiddity/` that reaches the image needs one,
+  with a changelog entry; the build skips a version that is already published,
+  which would otherwise leave the old image under it silently. Base image bumps
+  from Renovate are the one change that doesn't get one, and they reach users
+  with the next Quiddity release.
 - **Backups are hot, and hold an export, not the graph's files.** The graph is a
   SQLite file and the blobs another database, and a copy taken mid-write can be
   torn. So `backup_pre` (`quiddity-backup-pre`) sends the node SIGUSR1, which
