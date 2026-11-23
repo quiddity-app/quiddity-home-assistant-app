@@ -6,19 +6,25 @@ name: Build
 # (see `image` in quiddity/config.yaml). A tag is never reused: a version that is
 # already published is built but left alone, so a change to the image needs a
 # new version.
+#
+# Publishing happens when a change to the app reaches main, or when this is run
+# by hand on main: a branch renamed to main, or a change that touches only other
+# files, is no push that this workflow sees, and nothing would be published.
 
+# `test` is a required check, so it must run, and report, on every pull request:
+# a workflow filtered out by `paths` reports nothing, and the check would wait for
+# ever on a pull request that touches only other files. Only the push, which
+# publishes, is filtered.
 on:
   pull_request:
-    paths:
-    - quiddity/**
-    - scripts/**
-    - .github/workflows/build.yml
+  merge_group:
   push:
     branches: [main]
     paths:
     - quiddity/**
     - scripts/**
     - .github/workflows/build.yml
+  workflow_dispatch:
 
 permissions: {}
 
@@ -43,7 +49,8 @@ jobs:
     - run: scripts/smoke-test.sh quiddity-app:ci
 
   prepare:
-    if: github.event_name == 'push'
+    # Never a pull request, and never a branch: a version is published from main.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 5
