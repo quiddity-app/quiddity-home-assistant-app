@@ -28,7 +28,8 @@ what isn't obvious from the code.
 - `scripts/smoke-test.sh` runs the image against a stand-in for the Supervisor,
   and `scripts/check-version.sh` that the version follows Quiddity's.
 - `.github/workflows/build.yml` runs that on ARM, and on main publishes the
-  images for each architecture; `pre-commit.yml` runs the hooks.
+  images for each architecture, when a change to the app reaches main or when it
+  is run by hand there; `pre-commit.yml` runs the hooks.
 - `.devcontainer.json` and `.vscode/` are for running the app in a real
   Supervisor.
 
@@ -114,6 +115,14 @@ local apps.
 
 CI runs the test on an ARM runner, since that is what the app is hosted on, and
 publishes both architectures from main. amd64 is built there, but not run.
+**`test` is a required check, so it runs on every pull request**: don't put a
+`paths` filter on `pull_request` in `build.yml`, or a pull request that touches
+other files will wait for it for ever. (The push is filtered, since all it does
+is publish.) The cost is a compile on pull requests that don't need one.
+
+The first publish makes a **private** package, which Home Assistant can't pull
+(it says `denied`, with a 403 and a 401). Make it public once, in the
+organisation's package settings. Nothing a workflow can do changes that.
 
 ## Checking
 
