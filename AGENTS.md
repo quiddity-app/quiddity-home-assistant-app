@@ -128,9 +128,14 @@ publishes both architectures from main. amd64 is built there, but not run.
 other files will wait for it for ever. (The push is filtered, since all it does
 is publish.) The cost is a compile on pull requests that don't need one.
 
-The first publish makes a **private** package, which Home Assistant can't pull
-(it says `denied`, with a 403 and a 401). Make it public once, in the
-organisation's package settings. Nothing a workflow can do changes that.
+The first publish makes **private** packages, which Home Assistant can't pull
+(it says `denied`, with a 403 and then a 401). There are three: the one `image`
+in `config.yaml` names, which is the multi-arch image and holds everything, and
+an `aarch64-` and an `amd64-` one that it is assembled from. **Make the one
+`image` names public**, once, in the organisation's package settings; the others
+can stay private. Making only an `aarch64-` package public looks like progress,
+since the error changes from 403 to 401, but it fixes nothing. Nothing a workflow
+can do changes any of this.
 
 ## Checking
 
