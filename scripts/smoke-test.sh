@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs the app's image the way Home Assistant does, against a stand-in for the
 # Supervisor, and checks what a person relies on: the sidebar page shows the
-# device ID, a stop is clean, and a backup's export can be restored.
+# device ID, a stop is clean, a backup's copy of the graph opens, and its export
+# can be restored.
 #
 # Usage: scripts/smoke-test.sh IMAGE
 #
@@ -121,6 +122,20 @@ start serving "${data}"
 wait_for serving "^serving "
 docker exec serving quiddity-backup-pre || fail "the backup hook failed"
 docker exec serving test -f /data/export/entities/Hello.md || fail "the export has no Hello.md"
+# The copy of the graph's file: private, no half-made leftovers, and a graph that
+# opens, with what was imported in it. It is read in the running app, where the
+# node is still serving, as a restore would find it.
+docker exec serving sh -c '
+  set -e
+  copy=/data/database/graph.quiddity.zst
+  test -s "${copy}"
+  test "$(stat -c %a "${copy}")" = 600
+  test -z "$(ls /data/database | grep "\.part$" || true)"
+  mkdir /tmp/copy
+  zstd --quiet --decompress --stdout "${copy}" > /tmp/copy/graph.quiddity
+  quiddity-node --graph /tmp/copy/graph.quiddity export /tmp/copy/out > /dev/null
+  grep -rq "A block" /tmp/copy/out
+' || fail "the backup has no usable copy of the graph's file"
 stop serving
 
 echo "== Restoring: only the export is in the backup, and the app has already started"

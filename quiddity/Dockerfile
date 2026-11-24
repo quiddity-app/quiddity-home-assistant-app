@@ -32,9 +32,11 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 FROM ${BUILD_FROM}
 # Alpine keeps busybox's httpd, which serves the ingress page, in a separate
-# package. The versions are the base image's Alpine's, so they move with it.
+# package. sqlite3 and zstd are for the copy of the graph that a backup holds
+# (quiddity-backup-pre). The versions are the base image's Alpine's, so they
+# move with it.
 # hadolint ignore=DL3018
-RUN apk add --no-cache busybox-extras
+RUN apk add --no-cache busybox-extras sqlite zstd
 COPY --from=build /quiddity-node /usr/local/bin/quiddity-node
 COPY rootfs /
 LABEL org.opencontainers.image.title="Quiddity" \
