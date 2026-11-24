@@ -1,10 +1,13 @@
 #!/usr/bin/with-contenv bashio
 # shellcheck shell=bash
 # Run by Home Assistant before a backup, inside the running app. It has the node
-# write a Markdown export of its graph, which is what the backup keeps: the
-# graph's own files can't be copied while the node writes to them.
+# write a Markdown export of its graph, and takes a compressed copy of the
+# graph's file, which are what the backup keeps: the live file can't be copied
+# as it is while the node writes to it.
 
 readonly EXPORT=/data/export
+readonly GRAPH=/data/graph/graph.quiddity
+readonly COPY_DIR=/data/database
 # How long the node has to export, and to have started: it dies of SIGUSR1 until
 # it has set up the handler, a moment after it says it is serving.
 readonly TIMEOUT=120
@@ -27,6 +30,28 @@ if ((age < SETTLE)); then
   sleep $((SETTLE - age))
 fi
 
+# A consistent copy of the graph's file, for restoring this node as it was.
+# VACUUM INTO writes it in one read transaction, so the node's saves wait for it
+# and it can't be torn, and builds it afresh with every table in order and no
+# free pages. Two copies of a graph that has hardly changed are therefore
+# nearly the same bytes, which is what lets --rsyncable make a backup that
+# is mostly the last one. It keeps the file's application_id and layout, so the
+# node opens it as it is. It is written under another name and renamed, so a
+# failure never leaves half a copy where a backup would find it.
+copy_graph() {
+  local out="${COPY_DIR}/graph.quiddity.zst" part="${COPY_DIR}/graph.quiddity.zst.part"
+  local plain="${COPY_DIR}/graph.quiddity.part"
+  mkdir -p "${COPY_DIR}"
+  rm -f "${plain}" "${part}"
+  # Owner only: the file holds what makes this node this device.
+  umask 077
+  sqlite3 -readonly -cmd '.timeout 60000' "${GRAPH}" "VACUUM INTO '${plain}'" || return 1
+  zstd --quiet --fast --rsyncable --force -o "${part}" "${plain}" || return 1
+  rm -f "${plain}"
+  mv "${part}" "${out}"
+  bashio::log.info "Copied the graph for the backup ($(du -h "${out}" | cut -f1))"
+}
+
 # The export is built beside the directory and renamed over it, so the
 # directory's inode changes exactly when the new one is in place.
 before=$(stat -c %i "${EXPORT}" 2> /dev/null || echo none)
@@ -35,6 +60,10 @@ for ((waited = 0; waited < TIMEOUT; waited++)); do
   now=$(stat -c %i "${EXPORT}" 2> /dev/null || echo none)
   if [[ "${now}" != none && "${now}" != "${before}" ]]; then
     bashio::log.info "Exported the graph for the backup"
+    copy_graph || {
+      bashio::log.error "Couldn't copy the graph's file for the backup"
+      exit 1
+    }
     exit 0
   fi
   sleep 1

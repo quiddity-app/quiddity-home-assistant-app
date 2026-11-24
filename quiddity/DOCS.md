@@ -30,6 +30,16 @@ the node writes its graph as Markdown into the app's data, and the backup holds
 that and not the node's own files, which can't be copied safely while it writes
 to them. The Markdown can be read without Quiddity.
 
+The backup also holds `database/graph.quiddity.zst`: a consistent, compressed
+copy of the graph's file, taken with SQLite's `VACUUM INTO` while the node runs
+(its saves wait for the copy). It contains the graph's files as well as its
+text, and is built the same way each time, so successive backups differ little.
+The file is private to this app, and holds the node's salt (and, for a graph
+made by an early version, its endpoint key), so treat the backup accordingly.
+Restoring from it is not built yet: until it is, it can be unpacked by hand
+(`zstd -d`) into the graph's folder with the app stopped. The device key is kept
+outside the file, and is not in the backup yet.
+
 A backup does not hold:
 
 - **The node's device ID.** A restored node has a new one, which your devices
