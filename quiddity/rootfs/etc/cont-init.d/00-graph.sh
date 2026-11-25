@@ -4,8 +4,10 @@
 # in the sidebar, every time.
 
 readonly GRAPH=/data/graph
-# Where the node writes its Markdown export, which is what a backup holds.
+# What a backup holds: the Markdown export, and a compressed copy of the graph's
+# file, both made by quiddity-backup-pre.
 readonly EXPORT=/data/export
+readonly COPY=/data/database/graph.quiddity.zst
 
 initial=$(bashio::config 'initial_graph')
 create=""
@@ -19,25 +21,53 @@ elif [[ "${initial}" == restore ]]; then
   rm -rf /tmp/check
   if [[ "${entities}" != 0 ]]; then
     bashio::log.info "There is a graph already, so not restoring over it"
-  elif [[ -f "${EXPORT}/quiddity.json" ]]; then
+  elif [[ -f "${COPY}" || -f "${EXPORT}/quiddity.json" ]]; then
     mv "${GRAPH}/graph.quiddity" "${GRAPH}/graph.quiddity.empty"
     create=restore
   fi
 fi
 
-if [[ "${create}" == restore && ! -f "${EXPORT}/quiddity.json" ]]; then
-  bashio::log.warning "There is no export from a backup to restore, so starting empty"
+if [[ "${create}" == restore && ! -f "${COPY}" && ! -f "${EXPORT}/quiddity.json" ]]; then
+  bashio::log.warning "There is nothing from a backup to restore, so starting empty"
   create=empty
 fi
+
+# Puts the backup's copy of the graph's file in place, and says whether it
+# opens. The copy is the graph as it was, with its ID and its history, so the
+# devices that still have it can sync with it. It is unpacked beside where it
+# goes and renamed, and the owner alone can read it, as the node makes it.
+unpack_copy() {
+  [[ -f "${COPY}" ]] || return 1
+  mkdir -p "${GRAPH}"
+  (
+    umask 077
+    zstd --quiet --decompress --force -o "${GRAPH}/graph.quiddity.part" "${COPY}"
+  ) || return 1
+  if ! quiddity-node --graph "${GRAPH}/graph.quiddity.part" export /tmp/check > /dev/null; then
+    rm -rf "${GRAPH}/graph.quiddity.part" /tmp/check
+    return 1
+  fi
+  rm -rf /tmp/check
+  mv "${GRAPH}/graph.quiddity.part" "${GRAPH}/graph.quiddity"
+}
 
 if [[ -n "${create}" ]]; then
   mkdir -p "${GRAPH}"
   case "${create}" in
     restore)
-      bashio::log.info "Restoring the graph from the export in the backup"
-      bashio::log.warning "This node has a new device ID, so add it again on your devices"
-      quiddity-node --graph "${GRAPH}" init > /dev/null
-      quiddity-node --graph "${GRAPH}" import "${EXPORT}"
+      if unpack_copy; then
+        bashio::log.info "Restored the graph from the copy in the backup"
+        bashio::log.warning "Restore only when no other node is running this graph"
+        bashio::log.warning "The device ID may have changed, so check it on your devices"
+      elif [[ -f "${EXPORT}/quiddity.json" ]]; then
+        bashio::log.info "Restoring the graph from the export in the backup"
+        bashio::log.warning "This node has a new device ID, so add it again on your devices"
+        quiddity-node --graph "${GRAPH}" init > /dev/null
+        quiddity-node --graph "${GRAPH}" import "${EXPORT}"
+      else
+        bashio::log.warning "The backup's copy of the graph won't open, and it has no export, so starting empty"
+        quiddity-node --graph "${GRAPH}" init --blank > /dev/null
+      fi
       ;;
     new)
       bashio::log.info "Creating a new graph"
