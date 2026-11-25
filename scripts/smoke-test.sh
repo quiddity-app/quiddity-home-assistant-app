@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Runs the app's image the way Home Assistant does, against a stand-in for the
 # Supervisor, and checks what a person relies on: the sidebar page shows the
-# device ID, a stop is clean, a backup's copy of the graph opens, and its export
-# can be restored.
+# device ID, a stop is clean, a backup's copy of the graph opens, and either the
+# copy or the export can be restored.
 #
 # Usage: scripts/smoke-test.sh IMAGE
 #
@@ -118,6 +118,10 @@ printf 'title:: Hello\n\n- A block\n' > "${scratch}/markdown/entities/Hello.md"
 docker run --rm --volume "${data}:/data" --volume "${scratch}/markdown:/markdown:ro" \
   --entrypoint sh "${image}" -c \
   'quiddity-node --graph /data/graph init > /dev/null && quiddity-node --graph /data/graph import /markdown > /dev/null'
+# The graph's own ID, to see that a restore from the copy is the same graph.
+graph_id=$(docker run --rm --volume "${data}:/data" --entrypoint quiddity-node "${image}" \
+  --graph /data/graph identify)
+[[ -n "${graph_id}" ]] || fail "the graph has no ID"
 start serving "${data}"
 wait_for serving "^serving "
 docker exec serving quiddity-backup-pre || fail "the backup hook failed"
@@ -163,5 +167,25 @@ stop again
 docker run --rm --volume "${restored}:/data" --entrypoint sh "${image}" -c \
   'quiddity-node --graph /data/graph export /tmp/check > /dev/null && grep -rq "A block" /tmp/check' \
   || fail "the restored graph doesn't have what was backed up"
+
+echo "== Restoring from the copy of the graph's file: it is the same graph"
+mkdir -p "${scratch}/database"
+docker cp "serving:/data/database/." "${scratch}/database"
+copied=$(volume copied)
+docker run --rm --volume "${copied}:/data" --volume "${scratch}/database:/database:ro" \
+  --entrypoint sh "${image}" -c 'mkdir /data/database && cp -a /database/. /data/database'
+options "{\"allowed_devices\": [\"${peer}\"], \"initial_graph\": \"empty\", \"log_level\": \"warn\"}"
+start blank "${copied}"
+wait_for blank "^serving "
+stop blank
+options "{\"allowed_devices\": [\"${peer}\"], \"initial_graph\": \"restore\", \"log_level\": \"warn\"}"
+start copied "${copied}"
+wait_for copied "^serving "
+logged copied "Restored the graph from the copy" || fail "didn't say it restored the copy"
+stop copied
+docker run --rm --volume "${copied}:/data" --entrypoint sh "${image}" -c \
+  'test "$(quiddity-node --graph /data/graph identify)" = "$1" \
+    && quiddity-node --graph /data/graph export /tmp/check > /dev/null && grep -rq "A block" /tmp/check' \
+  sh "${graph_id}" || fail "the graph restored from the copy isn't the one that was backed up"
 
 echo "passed"

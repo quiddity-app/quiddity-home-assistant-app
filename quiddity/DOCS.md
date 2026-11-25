@@ -32,23 +32,18 @@ to them. The Markdown can be read without Quiddity.
 
 The backup also holds `database/graph.quiddity.zst`: a consistent, compressed
 copy of the graph's file, taken with SQLite's `VACUUM INTO` while the node runs
-(its saves wait for the copy). It contains the graph's files as well as its
-text, and is built the same way each time, so successive backups differ little.
-The file is private to this app, and holds the node's salt (and, for a graph
-made by an early version, its endpoint key), so treat the backup accordingly.
-Restoring from it is not built yet: until it is, it can be unpacked by hand
-(`zstd -d`) into the graph's folder with the app stopped. The device key is kept
-outside the file, and is not in the backup yet.
+(its saves wait for the copy). It is the graph as it is, with its ID, its
+history and its files, and it is built the same way each time, so successive
+backups differ little. It is private to this app, and may hold keys that make the
+node this node, so treat the backup accordingly.
 
 A backup does not hold:
 
-- **The node's device ID.** A restored node has a new one, which your devices
-  need to be told. Its sync identity is therefore never copied to a second
-  place, which is the one hazard in restoring a graph that Quiddity can't yet
-  guard against itself.
-- **Files in the graph** (images, PDFs and the like). The export doesn't carry
-  them yet. Your other devices keep them, and the node fetches them again when
-  it syncs.
+- **The device key.** It lives outside the graph's file, so a restored node can
+  have a different device ID, which your devices need to be told. It is the
+  graph that is restored, not the device.
+- **Files in the Markdown export** (images, PDFs and the like). They are in the
+  copy of the graph's file.
 
 ### Restoring
 
@@ -56,12 +51,20 @@ Your other devices hold the whole graph too, so in the usual case there is
 nothing to restore: restore the backup (or start a new app), leave **Initial
 graph** on `empty`, add the node's new ID on your devices, and let them sync.
 
-If this node was the **only** copy, restore the backup, then set **Initial
-graph** to `restore` and restart the app. It builds the graph from the export,
-unless the graph already holds something, which it never replaces. The result
-is a new graph that happens to have your content, with no shared history with
-any device that still has the old one, so syncing the two would show
-everything twice. Restore only when nothing else has the graph.
+If this node was the **only** copy, or all of them are lost, restore the backup,
+then set **Initial graph** to `restore` and restart the app. If the backup holds
+the copy of the graph's file, the node takes that: the same graph, with its ID,
+its history and its files, which the devices that still have a version of it
+can sync with. The device ID may differ. Restore only when no other node is
+running this graph, since two that share one would each carry on as the other.
+
+Without the copy (a backup made before it existed), the node builds the graph
+from the Markdown export instead. That is a new graph that happens to have your
+content, with no shared history with any device that still has the old one, so
+syncing the two would show everything twice. Restore that way only when nothing
+else has the graph.
+
+Either way, it never replaces a graph that already holds something.
 
 ## Options
 
