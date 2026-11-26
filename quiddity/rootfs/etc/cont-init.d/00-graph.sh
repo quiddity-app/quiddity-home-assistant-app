@@ -82,6 +82,16 @@ if [[ -n "${create}" ]]; then
   esac
 fi
 
+# The device ID comes from a key kept apart from the graph, in /data/config. A
+# graph with no key beside it gets a new one, and so a new device ID, which the
+# devices that had the old one won't recognise. That is what every restart used
+# to do, before the key was kept in /data, so say so rather than let sync fail
+# without a reason. (A graph just made or restored has said its own piece.)
+if [[ -z "${create}" && ! -f "${QUIDDITY_CONFIG_DIR:-/data/config}/device.key" ]]; then
+  bashio::log.warning "There is a graph but no device key, so this node has a new device ID"
+  bashio::log.warning "Add it again on your devices, and it will stay the same from now on"
+fi
+
 device_id=$(quiddity-node --graph "${GRAPH}" id)
 bashio::log.info "This node's device ID is ${device_id}"
 

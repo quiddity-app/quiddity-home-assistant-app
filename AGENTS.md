@@ -71,9 +71,15 @@ what isn't obvious from the code.
   the change to make in Quiddity. Restoring by import makes a graph unrelated
   to any device's copy (graph IDs aren't built), so `initial_graph: restore` is
   only for when nothing else has the graph, and the docs say so.
-- **Everything the node keeps is in `/data`**, including its identity, in
-  `graph/graph.quiddity`. A backup leaves that out, so restoring never gives two
-  nodes one identity.
+- **Everything the node keeps is in `/data`**, including its identity: the graph's
+  own in `graph/graph.quiddity`, and the device key in `config/`, which the
+  Dockerfile's `QUIDDITY_CONFIG_DIR` points the node at. Without that the node
+  used `$HOME/.config/quiddity`, inside the container, and every restart made a
+  new key and so a new device ID: a graph made since the key was kept apart
+  derives its endpoint key from it. A backup leaves both out, so restoring never
+  gives two nodes one identity. The key's absence beside a graph can't be made an
+  error, since it is how an app from before this change starts, so the init
+  script warns instead.
 - **The node stops only on SIGINT, and a stop sends SIGTERM to everything.** So
   the node is started with SIGTERM ignored (an ignored signal survives `exec`)
   and the run script's trap forwards an interrupt, then exits 0, because a

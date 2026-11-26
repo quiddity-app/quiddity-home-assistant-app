@@ -1,5 +1,5 @@
 name: Quiddity
-version: "0.1.0-alpha.2.2"
+version: "0.1.0-alpha.2.3"
 slug: quiddity
 description: An always-on Quiddity node, so your devices can sync without being online together
 url: https://github.com/quiddity-app/quiddity-home-assistant-app
@@ -19,10 +19,12 @@ timeout: 30
 # be torn. So a backup keeps what is made just before it (backup_pre): a
 # Markdown export, and a compressed, consistent copy of the file in /data/database
 # for restoring the graph as it was (initial_graph: restore). The live file is
-# left out.
+# left out, and so is the device key (config/), so that restoring never gives
+# two nodes one identity.
 backup: hot
 backup_pre: /usr/local/bin/quiddity-backup-pre
 backup_exclude:
+- config/*
 - graph/*
 - export.new
 - export.new/*
