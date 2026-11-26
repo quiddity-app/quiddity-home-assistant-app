@@ -141,6 +141,17 @@ docker exec serving sh -c '
   grep -rq "A block" /tmp/copy/out
 ' || fail "the backup has no usable copy of the graph's file"
 stop serving
+# Home Assistant restarts the app on the same /data, in a new container. The node's
+# key must be in /data, or each restart gives it a new device ID.
+id=$(docker logs serving 2>&1 | sed -n "s/.*device ID is \([0-9a-f]\{64\}\).*/\1/p")
+[[ -n "${id}" ]] || fail "no device ID in the log"
+docker run --rm --volume "${data}:/data" --entrypoint test "${image}" -f /data/config/device.key \
+  || fail "the device key isn't in /data"
+start restarted "${data}"
+wait_for restarted "^serving "
+logged restarted "no device key" && fail "restarted without its device key"
+logged restarted "device ID is ${id}" || fail "the device ID changed with a restart"
+stop restarted
 
 echo "== Restoring: only the export is in the backup, and the app has already started"
 mkdir -p "${scratch}/backup"

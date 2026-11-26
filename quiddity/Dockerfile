@@ -39,6 +39,11 @@ FROM ${BUILD_FROM}
 RUN apk add --no-cache busybox-extras sqlite zstd
 COPY --from=build /quiddity-node /usr/local/bin/quiddity-node
 COPY rootfs /
+# The node keeps the device's key in a configuration directory, which it finds
+# from HOME, and so in the container's own filesystem, which a restart throws
+# away. Every restart then gave the node a new key, and so a new device ID that
+# nobody had been told. /data is the one place that survives.
+ENV QUIDDITY_CONFIG_DIR=/data/config
 LABEL org.opencontainers.image.title="Quiddity" \
   org.opencontainers.image.description="An always-on Quiddity node for Home Assistant" \
   org.opencontainers.image.source="https://github.com/quiddity-app/quiddity-home-assistant-app" \
