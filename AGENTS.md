@@ -42,8 +42,10 @@ what isn't obvious from the code.
   pull request (`renovate.json`), because an image's tag is the app's version
   and **a tag is never reused**: a new Quiddity must be a new version, or it
   would never reach anyone. `scripts/check-version.sh` fails CI if the two have
-  come apart, or the changelog has no entry for the version, so a Renovate pull
-  request needs a line in `CHANGELOG.md` added to it before it can merge.
+  come apart, or a revision has no changelog entry. A plain Quiddity release needs
+  no entry, since Renovate can't write one (its post-upgrade tasks only run
+  self-hosted): the changelog's preamble says that a version without one is the
+  release and nothing else, and links to its notes.
   It is built from source, not from the release's archives, because those are
   for glibc and the image is Alpine; the build stamps the version in with the
   release's own `scripts/set-version.sh`, as the release does, so that

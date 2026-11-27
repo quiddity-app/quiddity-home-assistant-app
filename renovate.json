@@ -33,7 +33,7 @@
   ],
   "packageRules": [
     {
-      "description": "A Quiddity release is a new version of the app: its Dockerfile pin and the app's version move in one pull request, which isn't merged on its own because the changelog needs a line",
+      "description": "A Quiddity release is a new version of the app: its Dockerfile pin and the app's version move in one pull request, which isn't merged on its own, so that a person looks at what the release changes",
       "matchDepNames": [
         "quiddity-app/quiddity"
       ],
