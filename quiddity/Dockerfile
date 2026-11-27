@@ -1,13 +1,13 @@
 # The base is Home Assistant's own, which brings bashio and the s6 overlay that
 # supervises the services in rootfs/etc/services.d.
-ARG BUILD_FROM=ghcr.io/home-assistant/base:3.23
+ARG BUILD_FROM=ghcr.io/home-assistant/base:3.23@sha256:b9916671d3df931e47f2f90a219520e091b364c3a05a6d54dc5c9e1545bccf0b
 
 # The node is built from a Quiddity release. Its archives are built for glibc,
 # which this image isn't, so it is built from the release's source, as the
 # release builds it. Renovate moves these two together, and `version` in
 # config.yaml with them (see renovate.json), so that a new Quiddity release is a
 # new version of the app.
-FROM rust:1.100-alpine3.23 AS build
+FROM rust:1.100-alpine3.23@sha256:9577a4edf61be25721f5fa4006ad463b83ea52c0a17c6e6b673c72c794aee738 AS build
 # renovate: datasource=github-tags depName=quiddity-app/quiddity extractVersion=^v(?<version>.+)$
 ARG QUIDDITY_VERSION=0.1.0-alpha.2
 # The commit that tag points to, so that a tag that moves fails the build.
