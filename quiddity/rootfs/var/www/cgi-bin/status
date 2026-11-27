@@ -1,0 +1,11 @@
+#!/bin/sh
+# What the ingress page asks for to show the node's sync status. The node
+# answers on loopback only (see services.d/quiddity/run), where the ingress
+# gateway can't reach it, so this is the way across: httpd runs it as a CGI,
+# and it fetches the node's own answer. A node that isn't serving, or that is too
+# old to answer, gives the page an error to say so with.
+echo "Content-Type: application/json"
+echo "Cache-Control: no-store"
+echo
+wget -q -T 3 -O - http://127.0.0.1:8098/status \
+  || echo '{"error":"unavailable"}'

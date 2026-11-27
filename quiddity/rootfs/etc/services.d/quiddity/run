@@ -16,6 +16,9 @@ args+=(serve)
 # The export is written whenever the node is sent SIGUSR1, which is how
 # quiddity-backup-pre gets the copy that a backup holds.
 args+=(--export /data/export)
+# The node says how it stands with other devices, on loopback, for the page in
+# the sidebar (var/www/cgi-bin/status).
+args+=(--debug-http 127.0.0.1:8098)
 # mapfile rather than a read loop: bashio doesn't end its output with a newline,
 # and read would drop the last device.
 mapfile -t devices < <(bashio::config 'allowed_devices')

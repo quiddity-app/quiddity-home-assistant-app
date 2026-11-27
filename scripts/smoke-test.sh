@@ -95,6 +95,12 @@ page() {
   docker exec "$1" wget --quiet --output-document=- http://127.0.0.1:8099/
 }
 
+# What the page's status script gives: the node's own answer, or an error when
+# it isn't serving. Either way, JSON that says which.
+status() {
+  docker exec "$1" wget --quiet --output-document=- http://127.0.0.1:8099/cgi-bin/status
+}
+
 # A device that may connect. Any valid ID will do: nothing connects.
 peer=$(docker run --rm --entrypoint quiddity-node "${image}" --graph /tmp/peer init --blank)
 
@@ -106,6 +112,8 @@ wait_for waiting "No device is allowed to connect yet"
 id=$(docker logs waiting 2>&1 | sed -n "s/.*device ID is \([0-9a-f]\{64\}\).*/\1/p")
 [[ -n "${id}" ]] || fail "no device ID in the log"
 page waiting | grep -q "${id}" || fail "the page doesn't show ${id}"
+page waiting | grep -q 'id="state"' || fail "the page has no sync status"
+status waiting | grep -q '"error"' || fail "a node that isn't serving reported a status"
 docker exec waiting quiddity-backup-pre || fail "a backup of a node that isn't serving failed"
 stop waiting
 
@@ -124,6 +132,12 @@ graph_id=$(docker run --rm --volume "${data}:/data" --entrypoint quiddity-node "
 [[ -n "${graph_id}" ]] || fail "the graph has no ID"
 start serving "${data}"
 wait_for serving "^serving "
+# The node binds its status port just after it says it is serving.
+for _ in $(seq 1 10); do
+  status serving | grep -q '"state"' && break
+  sleep 1
+done
+status serving | grep -q '"state"' || fail "a serving node gave no sync state"
 docker exec serving quiddity-backup-pre || fail "the backup hook failed"
 docker exec serving test -f /data/export/entities/Hello.md || fail "the export has no Hello.md"
 # The copy of the graph's file: private, no half-made leftovers, and a graph that

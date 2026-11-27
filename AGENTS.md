@@ -105,8 +105,13 @@ what isn't obvious from the code.
   commit that.
 - **bashio's `config` output has no trailing newline**, so `while read` drops the
   last value. Use `mapfile`. The smoke test found this.
-- **The ingress page is static**, written at start, because the node's store
-  allows one process at a time and so can't be asked who is connected.
+- **The ingress page is static, apart from the sync status**, which the node
+  reports itself. It is written at start, because the node's store allows one
+  process at a time, so nothing else can ask who is connected. `serve
+  --debug-http` answers on loopback (`127.0.0.1:8098`), which the Supervisor's
+  ingress gateway can't reach, so the ingress `httpd` runs `cgi-bin/status` as a
+  CGI and fetches it from inside the container, and the page polls that. A node
+  that isn't serving has nothing listening, and the page says it isn't running.
 - Scripts under `rootfs` run under bashio and have no extension, so the
   pre-commit hook for shellcheck matches them by path.
 

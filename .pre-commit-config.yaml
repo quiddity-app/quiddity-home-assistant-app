@@ -64,5 +64,5 @@ repos:
   - id: shellcheck
     # The app's scripts run under bashio and have no extension, so pre-commit
     # doesn't know they are shell.
-    files: ^(quiddity/rootfs/(etc/(cont-init|services)\.d|usr/local/bin)/|scripts/)
+    files: ^(quiddity/rootfs/(etc/(cont-init|services)\.d|usr/local/bin|var/www/cgi-bin)/|scripts/)
     types: [file]
