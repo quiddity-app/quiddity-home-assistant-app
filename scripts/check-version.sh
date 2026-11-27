@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Checks that the app's version follows the Quiddity release it is built from,
-# and that the changelog says so. Renovate moves the pin in the Dockerfile and
-# the version in config.yaml together, and this fails if only one has moved,
-# which would publish a new Quiddity under an old tag, or not publish it at all.
+# and that a change to the app alone has a changelog entry. Renovate moves the
+# pin in the Dockerfile and the version in config.yaml together, and this fails
+# if only one has moved, which would publish a new Quiddity under an old tag, or
+# not publish it at all.
 set -euo pipefail
 
 cd "$(dirname "$0")/../quiddity"
@@ -21,8 +22,13 @@ if [[ "${version}" != "${quiddity}" && "${version}" != "${quiddity}".[0-9]* ]]; 
   exit 1
 fi
 
-grep -q "^## ${version}\$" CHANGELOG.md || {
-  echo "CHANGELOG.md has no entry for ${version}" >&2
-  exit 1
-}
+# A plain Quiddity release needs no entry: Renovate can't write one, and the
+# changelog says that such a version is the release, with nothing of ours added.
+# A revision is our own change, and says what it changed.
+if [[ "${version}" != "${quiddity}" ]]; then
+  grep -q "^## ${version}\$" CHANGELOG.md || {
+    echo "CHANGELOG.md has no entry for ${version}" >&2
+    exit 1
+  }
+fi
 echo "ok: ${version} is built from Quiddity ${quiddity}"
