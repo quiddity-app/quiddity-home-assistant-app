@@ -42,20 +42,24 @@ what isn't obvious from the code.
   pull request (`renovate.json`), because an image's tag is the app's version
   and **a tag is never reused**: a new Quiddity must be a new version, or it
   would never reach anyone. `scripts/check-version.sh` fails CI if the two have
-  come apart, or a revision has no changelog entry. A plain Quiddity release needs
-  no entry, since Renovate can't write one (its post-upgrade tasks only run
-  self-hosted): the changelog's preamble says that a version without one is the
-  release and nothing else, and links to its notes.
+  come apart. A plain Quiddity release needs no changelog entry, since Renovate
+  can't write one (its post-upgrade tasks only run self-hosted): the changelog's
+  preamble says that a version without one is the release and nothing else, and
+  links to its notes.
   It is built from source, not from the release's archives, because those are
   for glibc and the image is Alpine; the build stamps the version in with the
   release's own `scripts/set-version.sh`, as the release does, so that
   `quiddity-node --version` says what it is.
-- **A change to the app alone, between Quiddity releases, adds a revision**:
-  `0.1.0-alpha.2.1`. Anything in `quiddity/` that reaches the image needs one,
-  with a changelog entry; the build skips a version that is already published,
-  which would otherwise leave the old image under it silently. Base image bumps
-  from Renovate are the one change that doesn't get one, and they reach users
-  with the next Quiddity release.
+- **The version has no revisions of its own, because Home Assistant can't order
+  them.** It compares versions with AwesomeVersion, and `0.1.0-alpha.2.1` is
+  neither older nor newer than `0.1.0-alpha.2` or `0.1.0-alpha.4`, so an app on
+  one is never offered an update (suffixes such as `+1` and `rev1` fail the same
+  way; only a release without a pre-release tag, `0.1.0`, ordered after one). A
+  change to the app alone therefore waits for the next Quiddity pre-release,
+  which is cut for it, and its entry in `CHANGELOG.md` says what it changed. The
+  build skips a version that is already published, which would otherwise leave
+  the old image under it silently. Base image bumps from Renovate don't need a
+  release, and reach users with the next one.
 - **Backups are hot, and hold an export, not the graph's files.** The graph is a
   SQLite file and the blobs another database, and a copy taken mid-write can be
   torn. So `backup_pre` (`quiddity-backup-pre`) sends the node SIGUSR1, which

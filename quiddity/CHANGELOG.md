@@ -1,13 +1,13 @@
 # Changelog
 
 An app's version is the Quiddity release it is built from. A change to the app
-alone, between releases, adds a number to that: `0.1.0-alpha.2.1`.
+alone is released with a Quiddity pre-release of its own.
 
-A version with no entry below, such as `0.1.0-alpha.4`, is a new Quiddity
+A version with no entry below, such as `0.1.0-alpha.3`, is a new Quiddity
 release and nothing else: see its
 [release notes](https://github.com/quiddity-app/quiddity/releases).
 
-## 0.1.0-alpha.2.3
+## 0.1.0-alpha.4
 
 - The node's device key is kept in `/data/config`, so it survives a restart.
   Before, it was in the container's own filesystem, and each restart made a new
@@ -17,6 +17,10 @@ release and nothing else: see its
   backups, as before.
 - The app warns when it finds a graph but no device key, since the device ID
   has then changed.
+
+Versions with a fourth number, below, were revisions of a release. Home Assistant
+can't tell that they are older than the next release, so an app on one is never
+offered an update: reinstall it (back it up first) to move on.
 
 ## 0.1.0-alpha.2.2
 
