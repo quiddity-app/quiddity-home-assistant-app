@@ -7,6 +7,9 @@ A version with no entry below, such as `0.1.0-alpha.3`, is a new Quiddity
 release and nothing else: see its
 [release notes](https://github.com/quiddity-app/quiddity/releases).
 
+- The node is downloaded from the Quiddity release rather than compiled while
+  the app is built, so installing on a Raspberry Pi no longer needs to compile
+  it. It is checked against the release's signed manifest first.
 - The sidebar page shows how the node is syncing: its state, and which of the
   devices it lists are connected.
 

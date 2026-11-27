@@ -30,8 +30,9 @@ repos:
   rev: 3.11.1
   hooks:
   - id: editorconfig-checker
-    # Binary files, and a licence that is not ours to reformat.
-    exclude: \.png$|^LICENSE$
+    # Binary files, and files that are not ours to reformat: a licence, and
+    # packslip's verifier, which is kept as it was published.
+    exclude: \.png$|^LICENSE$|^quiddity/packslip-verify\.mjs$
 - repo: https://github.com/jdx/jactionlint
   rev: v2.6.0
   hooks:
