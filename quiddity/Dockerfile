@@ -1,6 +1,6 @@
 # The base is Home Assistant's own, which brings bashio and the s6 overlay that
 # supervises the services in rootfs/etc/services.d.
-ARG BUILD_FROM=ghcr.io/home-assistant/base:3.23@sha256:b9916671d3df931e47f2f90a219520e091b364c3a05a6d54dc5c9e1545bccf0b
+ARG BUILD_FROM=ghcr.io/home-assistant/base:3.24@sha256:5021aac8a4b7f2a1397e23a9749dfe9f736463ffa471df6b200216c68d530fe6
 
 # The node is built from a Quiddity release. Its archives are built for glibc,
 # which this image isn't, so it is built from the release's source, as the
