@@ -9,9 +9,9 @@ ARG BUILD_FROM=ghcr.io/home-assistant/base:3.24@sha256:5021aac8a4b7f2a1397e23a97
 # new version of the app.
 FROM rust:1.100-alpine3.23@sha256:9577a4edf61be25721f5fa4006ad463b83ea52c0a17c6e6b673c72c794aee738 AS build
 # renovate: datasource=github-tags depName=quiddity-app/quiddity extractVersion=^v(?<version>.+)$
-ARG QUIDDITY_VERSION=0.1.0-alpha.4
+ARG QUIDDITY_VERSION=0.1.0-alpha.5
 # The commit that tag points to, so that a tag that moves fails the build.
-ARG QUIDDITY_REF=4510a4da37c27c03bafbed8d41bb6af46f4e8bc4
+ARG QUIDDITY_REF=725535e8ff67a9833ad665077b3d7d18bc9b72f0
 # bash is for the release's version script.
 # hadolint ignore=DL3018
 RUN apk add --no-cache bash build-base git
