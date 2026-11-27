@@ -2,33 +2,51 @@
 # supervises the services in rootfs/etc/services.d.
 ARG BUILD_FROM=ghcr.io/home-assistant/base:3.24@sha256:5021aac8a4b7f2a1397e23a9749dfe9f736463ffa471df6b200216c68d530fe6
 
-# The node is built from a Quiddity release. Its archives are built for glibc,
-# which this image isn't, so it is built from the release's source, as the
-# release builds it. Renovate moves these two together, and `version` in
+# The node is a Quiddity release's own musl build, which is static and so runs
+# on this Alpine image, checked against the release's signed packslip manifest. Renovate moves these two together, and `version` in
 # config.yaml with them (see renovate.json), so that a new Quiddity release is a
 # new version of the app.
-FROM rust:1.100-alpine3.23@sha256:9577a4edf61be25721f5fa4006ad463b83ea52c0a17c6e6b673c72c794aee738 AS build
 # renovate: datasource=github-tags depName=quiddity-app/quiddity extractVersion=^v(?<version>.+)$
 ARG QUIDDITY_VERSION=0.1.0-alpha.5
 # The commit that tag points to, so that a tag that moves fails the build.
 ARG QUIDDITY_REF=725535e8ff67a9833ad665077b3d7d18bc9b72f0
-# bash is for the release's version script.
+
+# Fetching and checking the node is a stage of its own, so that git and Node,
+# which the checking needs, aren't in the image.
+FROM ${BUILD_FROM} AS fetch
+ARG QUIDDITY_VERSION
+ARG QUIDDITY_REF
+# git is for checking that the tag hasn't moved, and Node is for packslip's
+# verifier (packslip-verify.mjs, one file of Node's own modules, copied from
+# jdx/packslip at the commit its v1.11.4 points to). The release attests its
+# files, but checking that needs a GitHub token, which a build here doesn't have.
+# The signed manifest needs none.
 # hadolint ignore=DL3018
-RUN apk add --no-cache bash build-base git
-WORKDIR /src
-# Fetching the one commit is much smaller than cloning the history.
-RUN git init --quiet . \
-  && git fetch --quiet --depth 1 https://github.com/quiddity-app/quiddity "refs/tags/v${QUIDDITY_VERSION}" \
-  && test "$(git rev-parse FETCH_HEAD)" = "${QUIDDITY_REF}" \
-  && git checkout --quiet FETCH_HEAD
-# The checked-in version is a placeholder, which `quiddity-node --version` would
-# report. The release stamps the real one in with this script before it builds.
-RUN scripts/set-version.sh "${QUIDDITY_VERSION}"
-# --locked builds exactly what the release's Cargo.lock says.
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/src/target \
-    cargo build --release --locked --package quiddity-node \
-  && cp target/release/quiddity-node /quiddity-node
+RUN apk add --no-cache git nodejs
+COPY packslip-verify.mjs /usr/local/bin/packslip-verify
+WORKDIR /tmp
+# The release's archive is named for Rust's target, and the first part of that
+# is what `apk --print-arch` says (x86_64 or aarch64). GitHub redirects release
+# downloads, and curl is held to https for them. The manifest names the release
+# and the workflow that signed it, which must be Quiddity's, and records the
+# archive's digest. The node must then say it is the release.
+RUN set -eu; \
+  tag="v${QUIDDITY_VERSION}"; \
+  git ls-remote https://github.com/quiddity-app/quiddity "refs/tags/${tag}" "refs/tags/${tag}^{}" > /tmp/tag; \
+  test "$(awk 'END { print $1 }' /tmp/tag)" = "${QUIDDITY_REF}"; \
+  archive="quiddity-node-${QUIDDITY_VERSION}-$(apk --print-arch)-unknown-linux-musl.tar.gz"; \
+  for file in "${archive}" packslip.sigstore.json; do \
+    curl --fail --silent --show-error --location --proto "=https" --proto-redir "=https" --remote-name \
+      "https://github.com/quiddity-app/quiddity/releases/download/${tag}/${file}"; \
+  done; \
+  packslip-verify packslip.sigstore.json \
+    --issuer https://token.actions.githubusercontent.com \
+    --source-repository https://github.com/quiddity-app/quiddity \
+    --project github.com/quiddity-app/quiddity \
+    --tag "${tag}" \
+    --artifact "${archive}"; \
+  tar -xzf "${archive}" -C /usr/local/bin quiddity-node; \
+  test "$(quiddity-node --version)" = "quiddity-node ${QUIDDITY_VERSION}"
 
 FROM ${BUILD_FROM}
 # Alpine keeps busybox's httpd, which serves the ingress page, in a separate
@@ -37,7 +55,7 @@ FROM ${BUILD_FROM}
 # move with it.
 # hadolint ignore=DL3018
 RUN apk add --no-cache busybox-extras sqlite zstd
-COPY --from=build /quiddity-node /usr/local/bin/quiddity-node
+COPY --from=fetch /usr/local/bin/quiddity-node /usr/local/bin/quiddity-node
 COPY rootfs /
 # The node keeps the device's key in a configuration directory, which it finds
 # from HOME, and so in the container's own filesystem, which a restart throws

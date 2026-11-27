@@ -46,10 +46,20 @@ what isn't obvious from the code.
   can't write one (its post-upgrade tasks only run self-hosted): the changelog's
   preamble says that a version without one is the release and nothing else, and
   links to its notes.
-  It is built from source, not from the release's archives, because those are
-  for glibc and the image is Alpine; the build stamps the version in with the
-  release's own `scripts/set-version.sh`, as the release does, so that
-  `quiddity-node --version` says what it is.
+  It is the release's musl archive (`quiddity-node-<version>-<arch>-unknown-linux-musl.tar.gz`,
+  static, so it runs on Alpine; the glibc archives wouldn't), downloaded in a
+  `fetch` stage of the Dockerfile and checked there with `packslip-verify.mjs`
+  against the release's signed `packslip.sigstore.json`: the signer must be a
+  Quiddity workflow, the tag the release's and the archive's digest the signed
+  one. The build also checks that the tag still points at `QUIDDITY_REF` and that
+  the node says it is that version. `gh attestation verify` would need a token,
+  which neither the builder action (it has no secrets input, only `build-args`,
+  which end up in the image's history) nor a plain `docker build` has.
+  `packslip-verify.mjs` is jdx/packslip's, unmodified, from the commit its
+  `v1.11.4` points to (`e0340e0`); it uses only Node's own modules and makes no
+  requests. Update it by copying a reviewed newer one. **A release that predates
+  the musl builds has no such archive**, so the app can only be moved to one that
+  has.
 - **The version has no revisions of its own, because Home Assistant can't order
   them.** It compares versions with AwesomeVersion, and `0.1.0-alpha.2.1` is
   neither older nor newer than `0.1.0-alpha.2` or `0.1.0-alpha.4`, so an app on
@@ -99,8 +109,8 @@ what isn't obvious from the code.
 - **The graph starts blank** unless `initial_graph` says otherwise: the node is a
   replica for devices that already hold the graph. A blank replica can't be
   written to before it has joined, which is why it can't be imported into.
-- **No `image` means building on the device**, which compiles the node on
-  whatever the user has, and can be too much for a Raspberry Pi. Remove `image`
+- **No `image` means building on the device**, which now only downloads the
+  node, so it is cheap. Remove `image`
   from `config.yaml` to test the Dockerfile through a local repository; don't
   commit that.
 - **bashio's `config` output has no trailing newline**, so `while read` drops the
