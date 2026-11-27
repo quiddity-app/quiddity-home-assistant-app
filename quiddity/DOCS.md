@@ -10,7 +10,9 @@ devices.
 
 Devices let each other in by ID, and nothing else can connect.
 
-1. Open **Quiddity** in the sidebar. It shows this node's device ID.
+1. Open **Quiddity** in the sidebar. It shows this node's device ID, and below
+   it, how the node stands with your other devices: alone, offline, behind or
+   synced, and which of the devices it knows are connected now.
 2. In Quiddity on a device you already use, open **Devices**, and add that ID.
 3. Copy that device's own ID from the same page, and put it in **Allowed
    devices** on this app's Configuration tab. Restart the app.

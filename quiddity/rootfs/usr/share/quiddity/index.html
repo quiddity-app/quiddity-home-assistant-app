@@ -13,6 +13,7 @@
   code { font: .9em ui-monospace, monospace; word-break: break-all; }
   .id { display: block; padding: .75rem; border: 1px solid; border-radius: 6px; user-select: all; }
   .none { opacity: .7; }
+  .state { font-weight: 600; }
   button { font: inherit; margin-top: .5rem; padding: .35rem .9rem; }
 </style>
 </head>
@@ -23,6 +24,10 @@
 <h2>This node's device ID</h2>
 <code class="id" id="id">@DEVICE_ID@</code>
 <button type="button" id="copy">Copy</button>
+
+<h2>Sync</h2>
+<p><span class="state" id="state">Checking…</span> <span id="meaning"></span></p>
+<ul id="devices"></ul>
 
 <h2>Connecting a device</h2>
 <ol>
@@ -35,6 +40,53 @@
 <ul>@ALLOWED@</ul>
 
 <script>
+// What each state of the node means: the words are Quiddity's own.
+var MEANINGS = {
+  alone: ["Alone", "No other device is listed, and none is connected."],
+  offline: ["Offline", "Other devices are listed, and none is connected."],
+  behind: ["Behind", "Connected, but this node lacks something a device has, or is holding back typing."],
+  synced: ["Synced", "Connected, and nothing is outstanding."],
+  present: ["Synced, and in use", "Connected, nothing is outstanding, and another device has a block open."]
+};
+
+function show(state, meaning, devices) {
+  document.getElementById("state").textContent = state;
+  document.getElementById("meaning").textContent = meaning;
+  var list = document.getElementById("devices");
+  list.textContent = "";
+  devices.forEach(function (item) {
+    var li = document.createElement("li");
+    var code = document.createElement("code");
+    code.textContent = item.id;
+    li.appendChild(code);
+    li.appendChild(document.createTextNode(item.note));
+    list.appendChild(li);
+  });
+}
+
+async function refresh() {
+  try {
+    // Relative, so that it goes through the ingress path this page was served from.
+    var response = await fetch("cgi-bin/status", { cache: "no-store" });
+    var status = await response.json();
+    if (status.error) {
+      show("Not reporting", "The node isn't running, so it can't say how it is syncing.", []);
+      return;
+    }
+    var connected = status.connected || [];
+    var meaning = MEANINGS[status.state] || [status.state, ""];
+    var others = (status.devices || []).filter(function (d) { return d.id !== status.device; });
+    show(meaning[0], meaning[1], others.map(function (d) {
+      var here = connected.includes(d.id);
+      return { id: d.id, note: (here ? " connected" : " not connected") + ", last saved " + d.seen };
+    }));
+  } catch (e) {
+    show("Not reporting", "This page couldn't reach the node.", []);
+  }
+}
+refresh();
+setInterval(refresh, 5000);
+
 document.getElementById("copy").addEventListener("click", async function () {
   var button = this;
   try {
